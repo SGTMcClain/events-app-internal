@@ -11,8 +11,17 @@ const bodyParser = require('body-parser');
 // create the server
 const app = express();
 
+const Firestore = require('@google-cloud/firestore');
+
+// const db = new Firestore({
+//   projectId: 'eventsApp-1',
+//   keyFilename: 'sample-master/eventCloudData.json',
+// });
+
+const eventsRef = db.collection('events');
+
 // the backend server will parse json, not a form request
-app.use(bodyParser.json());
+app.use(bodyParser.json().snapshot);
 
 // mock events data - for a real solution this data should be coming 
 // from a cloud data store
@@ -28,7 +37,7 @@ const mockEvents = {
 
 // health endpoint - returns an empty array
 app.get('/', (req, res) => {
-    res.json([]);
+    res.json(getAll(db));
 });
 
 // version endpoint to provide easy convient method to demonstrating tests pass/fail
@@ -40,7 +49,7 @@ app.get('/version', (req, res) => {
 // mock events endpoint. this would be replaced by a call to a datastore
 // if you went on to develop this as a real application.
 app.get('/events', (req, res) => {
-    res.json(mockEvents);
+    res.json([]);
 });
 
 // Adds an event - in a real solution, this would insert into a cloud datastore.
@@ -51,7 +60,8 @@ app.post('/event', (req, res) => {
     const ev = { 
         title: req.body.title, 
         description: req.body.description,
-        id : mockEvents.events.length + 1
+        id : mockEvents.events.length + 1,
+        likes: 0
      }
     // add to the mock array
     mockEvents.events.push(ev);
@@ -73,3 +83,15 @@ const server = app.listen(PORT, () => {
 });
 
 module.exports = app;
+
+// async function getAll(db) {
+//   // [START get_all]
+//   // [START firestore_data_get_all_documents]
+//   const eventsRef = db.collection('events');
+//   const snapshot = await eventsRef.get();
+//   snapshot.forEach(doc => {
+//     console.log(doc.id, '=>', doc.data());
+//   });
+//   // [END firestore_data_get_all_documents]
+//   // [END get_all]
+// }
