@@ -11,17 +11,25 @@ const bodyParser = require('body-parser');
 // create the server
 const app = express();
 
-const Firestore = require('@google-cloud/firestore');
+// bring in firestore
+const Firestore = require("@google-cloud/firestore");
+
+// initialize Firestore and set project id from env var
+const firestore = new Firestore(
+    {
+        projectId: "roidtcjan35" // use enviornment variable process.env.GOOGLE_CLOUD_PROJECT
+    }
+);
 
 // const db = new Firestore({
 //   projectId: 'eventsApp-1',
 //   keyFilename: 'sample-master/eventCloudData.json',
 // });
 
-const eventsRef = db.collection('events');
+// const eventsRef = db.collection('events');
 
 // the backend server will parse json, not a form request
-app.use(bodyParser.json().snapshot);
+app.use(bodyParser.json());
 
 // mock events data - for a real solution this data should be coming 
 // from a cloud data store
@@ -37,7 +45,7 @@ const mockEvents = {
 
 // health endpoint - returns an empty array
 app.get('/', (req, res) => {
-    res.json(getAll(db));
+    res.json(mockEvents);
 });
 
 // version endpoint to provide easy convient method to demonstrating tests pass/fail
@@ -49,7 +57,7 @@ app.get('/version', (req, res) => {
 // mock events endpoint. this would be replaced by a call to a datastore
 // if you went on to develop this as a real application.
 app.get('/events', (req, res) => {
-    res.json([]);
+    getEvents(req, res);
 });
 
 // Adds an event - in a real solution, this would insert into a cloud datastore.
@@ -61,8 +69,12 @@ app.post('/event', (req, res) => {
         title: req.body.title, 
         description: req.body.description,
         id : mockEvents.events.length + 1,
-        likes: 0
      }
+     // this will create the Events collection if it does not exist
+    firestore.collection("events").add(ev).then(ret => {
+        getEvents(req, res);
+    });
+
     // add to the mock array
     mockEvents.events.push(ev);
     // return the complete array
@@ -83,6 +95,35 @@ const server = app.listen(PORT, () => {
 });
 
 module.exports = app;
+
+function getEvents(req, res) {
+    firestore.collection("events").get()
+        .then((snapshot) => {
+            if (!snapshot.empty) {
+                const ret = { events: []};
+                snapshot.docs.forEach(element => {
+                    ret.events.push(element.data());
+                }, this);
+                console.log(ret);
+                res.json(ret);
+            } else {
+                 res.json(mockEvents);
+            }
+        })
+        .catch((err) => {
+            console.error('Error getting events', err);
+            res.json(mockEvents);
+        });
+    // snapshot.docs.forEach(element => {
+    //     //get data
+    //     const el = element.data();
+    //     //get internal firestore id and assign to object
+    //     el.id = element.id;
+    //     //add object to array
+    //     ret.events.push(el);
+    //     }, this);
+};
+
 
 // async function getAll(db) {
 //   // [START get_all]
